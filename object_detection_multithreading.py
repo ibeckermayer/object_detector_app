@@ -107,8 +107,6 @@ if __name__ == '__main__':
         frame = video_capture.read()
         input_q.put(frame)
 
-        # t = time.time()
-
         if output_q.empty():
             pass  # fill up queue
         else:
@@ -128,8 +126,6 @@ if __name__ == '__main__':
             cv2.imshow('Video', frame)
 
         fps.update()
-
-        # print('[INFO] elapsed time: {:.2f}'.format(time.time() - t))
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
