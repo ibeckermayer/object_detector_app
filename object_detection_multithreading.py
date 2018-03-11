@@ -91,7 +91,7 @@ if __name__ == '__main__':
                         default=360, help='Height of the frames in the video stream.')
     args = parser.parse_args()
 
-    input_q = Queue(5)  # fps is better if queue is higher but then more lags
+    input_q = Queue(100)  # fps is better if queue is higher but then more lags
     output_q = Queue()
     for i in range(1):
         t = Thread(target=worker, args=(input_q, output_q))
@@ -107,7 +107,7 @@ if __name__ == '__main__':
         frame = video_capture.read()
         input_q.put(frame)
 
-        t = time.time()
+        # t = time.time()
 
         if output_q.empty():
             pass  # fill up queue
@@ -129,7 +129,7 @@ if __name__ == '__main__':
 
         fps.update()
 
-        print('[INFO] elapsed time: {:.2f}'.format(time.time() - t))
+        # print('[INFO] elapsed time: {:.2f}'.format(time.time() - t))
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
