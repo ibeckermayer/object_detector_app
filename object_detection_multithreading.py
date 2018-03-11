@@ -58,27 +58,11 @@ def detect_objects(image_np, sess, detection_graph):
     return dict(rect_points=rect_points, class_names=class_names, class_colors=class_colors)
 
 
-def worker(input_q, output_q):
-    # Load a (frozen) Tensorflow model into memory.
-    detection_graph = tf.Graph()
-    with detection_graph.as_default():
-        od_graph_def = tf.GraphDef()
-        with tf.gfile.GFile(PATH_TO_CKPT, 'rb') as fid:
-            serialized_graph = fid.read()
-            od_graph_def.ParseFromString(serialized_graph)
-            tf.import_graph_def(od_graph_def, name='')
-
-        sess = tf.Session(graph=detection_graph)
-
-    fps = FPS().start()
-    while True:
-        fps.update()
-        frame = input_q.get()
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        output_q.put(detect_objects(frame_rgb, sess, detection_graph))
-
-    fps.stop()
-    sess.close()
+def worker(input_q, output_q, sess):
+    fps.update()
+    frame = input_q.get()
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    output_q.put(detect_objects(frame_rgb, sess, detection_graph))
 
 
 if __name__ == '__main__':
@@ -93,10 +77,17 @@ if __name__ == '__main__':
 
     input_q = Queue(1)  # fps is better if queue is higher but then more lags
     output_q = Queue()
-    for i in range(1):
-        t = Thread(target=worker, args=(input_q, output_q))
-        t.daemon = True
-        t.start()
+
+    detection_graph = tf.Graph()
+    with detection_graph.as_default():
+        od_graph_def = tf.GraphDef()
+        with tf.gfile.GFile(PATH_TO_CKPT, 'rb') as fid:
+            serialized_graph = fid.read()
+            od_graph_def.ParseFromString(serialized_graph)
+            tf.import_graph_def(od_graph_def, name='')
+
+        sess = tf.Session(graph=detection_graph)
+
 
     video_capture = WebcamVideoStream(src=args.video_source,
                                       width=args.width,
@@ -106,6 +97,7 @@ if __name__ == '__main__':
     while True:
         frame = video_capture.read()
         input_q.put(frame)
+        worker(input_q, output_q, sess)
 
         if output_q.empty():
             pass  # fill up queue
@@ -133,6 +125,6 @@ if __name__ == '__main__':
     fps.stop()
     print('[INFO] elapsed time (total): {:.2f}'.format(fps.elapsed()))
     print('[INFO] approx. FPS: {:.2f}'.format(fps.fps()))
-
+    sess.close()
     video_capture.stop()
     cv2.destroyAllWindows()
