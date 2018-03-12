@@ -57,12 +57,6 @@ def detect_objects(image_np, sess, detection_graph):
     )
     return dict(rect_points=rect_points, class_names=class_names, class_colors=class_colors)
 
-
-def worker(frame, sess):
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    return detect_objects(frame_rgb, sess, detection_graph)
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-src', '--source', dest='video_source', type=int,
@@ -72,9 +66,6 @@ if __name__ == '__main__':
     parser.add_argument('-ht', '--height', dest='height', type=int,
                         default=360, help='Height of the frames in the video stream.')
     args = parser.parse_args()
-
-    input_q = Queue(1)  # fps is better if queue is higher but then more lags
-    output_q = Queue()
 
     detection_graph = tf.Graph()
     with detection_graph.as_default():
@@ -91,13 +82,11 @@ if __name__ == '__main__':
                                       width=args.width,
                                       height=args.height).start()
     fps = FPS().start()
+    font = cv2.FONT_HERSHEY_SIMPLEX
 
     while True:
         frame = video_capture.read()
-
-
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        data = worker(frame, sess)
+        data = detect_objects(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), sess, detection_graph)
         rec_points = data['rect_points']
         class_names = data['class_names']
         class_colors = data['class_colors']
