@@ -58,11 +58,9 @@ def detect_objects(image_np, sess, detection_graph):
     return dict(rect_points=rect_points, class_names=class_names, class_colors=class_colors)
 
 
-def worker(input_q, output_q, sess):
-    fps.update()
-    frame = input_q.get()
+def worker(frame, sess):
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    output_q.put(detect_objects(frame_rgb, sess, detection_graph))
+    return detect_objects(frame_rgb, sess, detection_graph)
 
 
 if __name__ == '__main__':
@@ -96,25 +94,21 @@ if __name__ == '__main__':
 
     while True:
         frame = video_capture.read()
-        input_q.put(frame)
-        worker(input_q, output_q, sess)
 
-        if output_q.empty():
-            pass  # fill up queue
-        else:
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            data = output_q.get()
-            rec_points = data['rect_points']
-            class_names = data['class_names']
-            class_colors = data['class_colors']
-            for point, name, color in zip(rec_points, class_names, class_colors):
-                cv2.rectangle(frame, (int(point['xmin'] * args.width), int(point['ymin'] * args.height)),
-                              (int(point['xmax'] * args.width), int(point['ymax'] * args.height)), color, 3)
-                cv2.rectangle(frame, (int(point['xmin'] * args.width), int(point['ymin'] * args.height)),
-                              (int(point['xmin'] * args.width) + len(name[0]) * 6,
-                               int(point['ymin'] * args.height) - 10), color, -1, cv2.LINE_AA)
-                cv2.putText(frame, name[0], (int(point['xmin'] * args.width), int(point['ymin'] * args.height)), font,
-                            0.3, (0, 0, 0), 1)
+
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        data = worker(frame, sess)
+        rec_points = data['rect_points']
+        class_names = data['class_names']
+        class_colors = data['class_colors']
+        for point, name, color in zip(rec_points, class_names, class_colors):
+            cv2.rectangle(frame, (int(point['xmin'] * args.width), int(point['ymin'] * args.height)),
+                          (int(point['xmax'] * args.width), int(point['ymax'] * args.height)), color, 3)
+            cv2.rectangle(frame, (int(point['xmin'] * args.width), int(point['ymin'] * args.height)),
+                          (int(point['xmin'] * args.width) + len(name[0]) * 6,
+                           int(point['ymin'] * args.height) - 10), color, -1, cv2.LINE_AA)
+            cv2.putText(frame, name[0], (int(point['xmin'] * args.width), int(point['ymin'] * args.height)), font,
+                        0.3, (0, 0, 0), 1)
             cv2.imshow('Video', frame)
             fps.update()
 
